@@ -35,10 +35,13 @@ class FixesNotSet extends Component {
     });
   };
 
-   componentDidMount() {
-     axios
+  componentDidMount() {
+    const date = this.state.datevalue;
+    axios
       .get(
-        "http://sal7lly-001-site1.ctempurl.com/api/Orders/GetAllOrdersByStep?OrderSteps=8938780e-4080-4a45-4fa5-08d99d6e3e93&date=11-11-2021"
+        `http://sal7lly-001-site1.ctempurl.com/api/Orders/GetAllOrdersByStep?OrderSteps=8938780e-4080-4a45-4fa5-08d99d6e3e93${
+          date == "" ? "" : `&date=${date}`
+        }`
       )
       .then((res) => {
         // console.log(res);
@@ -125,43 +128,70 @@ class FixesNotSet extends Component {
           }
           time.join("");
           dat.timeT = time;
-          nallDates.push(datem);
         });
         // var uniq = [...new Set(nallDates)];
         // uniq.sort();
-        // this.setState({
-        //   data: newData,
-        //   allDates: uniq,
-        // });
+        this.setState({
+          data: newData,
+          // allDates: uniq,
+        });
       });
 
-
-      axios.get("http://sal7lly-001-site1.ctempurl.com/api/Orders/GetAllOrdersByStep?OrderSteps=8938780e-4080-4a45-4fa5-08d99d6e3e93").then((res)=>{
+    axios
+      .get(
+        "http://sal7lly-001-site1.ctempurl.com/api/Orders/GetAllOrdersByStep?OrderSteps=8938780e-4080-4a45-4fa5-08d99d6e3e93"
+      )
+      .then((res) => {
         var newData = res.data.data;
-        var nallDates = [];
+        var newallDates = [];
         newData.map((dat, index) => {
           var datem = dat.datePrefered.split("T")[0];
           dat.dateC = datem;
-
-          var uniq = [...new Set(nallDates)];
+          newallDates.push(datem);
+          var uniq = [...new Set(newallDates)];
           uniq.sort();
           this.setState({
             allDates: uniq,
           });
-        })
-      })
+        });
+      });
   }
 
   render() {
     const { allDates } = this.state;
 
-    const fiterDate = (e) =>{
-      this.setState({
-        datevalue: e.target.value
-      }, ()=>{
-        console.log(this.state.datevalue)
-      })
+    function formatDate(date) {
+      var d = new Date(date),
+        month = "" + (d.getMonth() + 1),
+        day = "" + d.getDate(),
+        year = d.getFullYear();
+
+      if (month.length < 2) month = "0" + month;
+      if (day.length < 2) day = "0" + day;
+
+      return [year, day, month].join("-");
     }
+
+    const fiterDate = (e) => {
+      var date = e.target.value;
+      date = formatDate(date);
+      var ne = "";
+      if (e.target.value == "all") {
+        ne = "";
+        this.setState({
+          datevalue: ne,
+        });
+      }
+      this.setState(
+        {
+          datevalue:date,
+        },
+        () => {
+          console.log(this.state.datevalue, "sds");
+        }
+      );
+      // window.location.reload();
+    };
 
     const datatable = {
       columns: [
@@ -199,6 +229,9 @@ class FixesNotSet extends Component {
             className="dateFilter form-control"
             id=""
           >
+            <option value="" selected disabled>
+              اختر التاريخ
+            </option>
             <option value="all">الكل</option>
             {allDates.map((item, index) => (
               <option value={item} key={index}>
