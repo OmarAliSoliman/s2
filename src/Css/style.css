@@ -1714,6 +1714,11 @@ input[type="number"] {
   flex-direction: column;
 }
 
+.filter .css-b62m3t-container{
+  width: 30%;
+  max-width: 100%;
+}
+
 .filter .form-control{
   width: 50%;
   margin-bottom: 0;
@@ -1727,6 +1732,18 @@ input[type="number"] {
 .css-1pahdxg-control{
   height: 50px !important;
   margin-bottom: 10px !important;
+}
+
+@media(max-width: 991px){
+  .filter .css-b62m3t-container{
+    width: 50%;
+  }
+}
+
+@media(max-width: 524px){
+  .filter .css-b62m3t-container{
+    width: 100%;
+  }
 }
 
 /*# sourceMappingURL=style.css.map */

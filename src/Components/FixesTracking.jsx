@@ -16,12 +16,15 @@ import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import { MDBBtn } from "mdbreact";
 import ModalAddHandymanToOrder from "./ModalAddHandymanToOrder";
 // import FixesNotSet from "../Components/FixesNotSet";
+import Select from "react-select";
 
 class FixesTracking extends Component {
   state = {
     data: [],
     names: [],
+    allDates: [],
     lodintable: true,
+    datevalue: "",
   };
 
   handleShow = () => {
@@ -33,9 +36,13 @@ class FixesTracking extends Component {
   async componentDidMount() {
     // console.log("hi");
     // var name= {};
+    const date = this.state.datevalue;
+    this.setState({
+      lodintable: true,
+    })
     await axios
       .get(
-        "http://sal7lly-001-site1.ctempurl.com/api/Orders/GetAllOrdersByStep?OrderSteps=6c39c9cc-41d1-432f-4287-08d9a6f4d6e9"
+        `http://sal7lly-001-site1.ctempurl.com/api/Orders/GetAllOrdersByStep?OrderSteps=6c39c9cc-41d1-432f-4287-08d9a6f4d6e9${date == "" ? "" : `&date=${date}`}`
       )
       .then((res) => {
         // console.log(res);
@@ -127,22 +134,60 @@ class FixesTracking extends Component {
             dat.city = dat.city.name;
           }
 
-          var datem = dat.datePrefered.split("T")[0];
+          var datem = dat.dateCreated.split("T")[0];
           dat.dateC = datem;
 
-          var timep = dat.datePrefered.split("T")[1];
-          var time = timep.toString ().match (/^([01]\d|2[0-3])(:)([0-5]\d)(:[0-5]\d)?$/) || [timep];
-          if (time.length > 1) { // If time format correct
-            time = time.slice (1);  // Remove full string match value
+          var timep = dat.dateCreated.split("T")[1];
+          var splittedString = timep.split(":");
+          timep = splittedString.slice(0, -1).join(':');
+          timep = timep.toString().match(/^([01]\d|2[0-3])(:)([0-5]\d)(:[0-5]\d)?$/) || [timep];
+          
+          if (timep.length > 1) { // If time format correct
+            timep = timep.slice(1);  // Remove full string match value
+            // timep[5] = +timep[0] < 12 ? 'AM' : 'PM'; // Set AM/PM
+            timep[0] = +timep[0] % 12 || 12; // Adjust hours
+          }
+          timep.join('');
+          dat.timeT = timep;
+
+
+          var timepr = dat.datePrefered.split("T")[1];
+          var time = timepr
+            .toString()
+            .match(/^([01]\d|2[0-3])(:)([0-5]\d)(:[0-5]\d)?$/) || [timepr];
+          if (time.length > 1) {
+            // If time format correct
+            time = time.slice(1); // Remove full string match value
             // time[5] = +time[0] < 12 ? 'AM' : 'PM'; // Set AM/PM
             time[0] = +time[0] % 12 || 12; // Adjust hours
           }
-          time.join ('');
-          dat.timeT = time;
+          time.join("");
+          dat.timepre = time;
+
 
         });
         this.setState({
           data: newData,
+        });
+      });
+
+      axios
+      .get(
+        "http://sal7lly-001-site1.ctempurl.com/api/Orders/GetAllOrdersByStep?OrderSteps=6c39c9cc-41d1-432f-4287-08d9a6f4d6e9"
+      )
+      .then((res) => {
+        var newData = res.data.data;
+        var newallDates = [];
+        newData.map((dat, index) => {
+          var datem = dat.dateCreated.split("T")[0];
+          dat.dateC = datem;
+          newallDates.push(datem);
+        });
+        var uniq = [...new Set(newallDates)];
+        uniq.sort();
+        uniq.unshift("all")
+        this.setState({
+          allDates: uniq,
         });
       });
   }
@@ -165,6 +210,54 @@ class FixesTracking extends Component {
   };
 
   render() {
+
+    const { allDates } = this.state;
+
+    function formatDate(date) {
+      var d = new Date(date),
+        month = "" + (d.getMonth() + 1),
+        day = "" + d.getDate(),
+        year = d.getFullYear();
+
+      if (month.length < 2) month = "0" + month;
+      if (day.length < 2) day = "0" + day;
+
+      return [month, day, year].join("-");
+    }
+
+    const fiterDate = (value, action) => {
+      var date = value.value;
+      var newd = "";
+      if (date == "all") {
+        newd = "";
+      } else {
+        date = formatDate(date);
+        newd = date;
+      }
+      this.setState(
+        {
+          datevalue: newd,
+        },
+        () => {
+          console.log(this.state.datevalue, "sds");
+          this.componentDidMount();
+        }
+      );
+      // window.location.reload();
+    };
+
+    const options = this.state.allDates.map((item) => ({
+      value: item,
+      label: item,
+    }));
+
+    const onSelectChange = (value, action) => {
+      console.log(action.name, value.value)
+      this.setState({
+        [action.name]:value.value
+      })
+    };
+
     const datatable = {
       columns: [
         { label: "العميل", field: "fullName" },
@@ -178,7 +271,8 @@ class FixesTracking extends Component {
         { label: "تسجيل", field: "employyrigister" },
         { label: "رقم هاتف العميل", field: "clientMop" },
         { label: "تاريخ الطلب", field: "dateC" },
-        { label: "وقت تنفيذ الطلب", field: "timeT" },
+        { label: "وقت الطلب", field: "timeT" },
+        { label: "وقت تنفيذ الطلب", field: "timepre" },
         { label: "الاختيارات", field: "option" },
       ],
       rows: this.state.data,
@@ -203,7 +297,17 @@ class FixesTracking extends Component {
     return (
       <div>
         <h5 class="mb-3 text-center font-weight-bold h4">متابعه</h5>
-
+        <div className="filter">
+          <label htmlFor="date-filter">فلتر على حسب التاريخ</label>
+          <Select
+            id="state-select"
+            options={options}
+            clearable={true}
+            // name="handymanId"
+            placeholder={"اختر التاريخ"}
+            onChange={fiterDate}
+          />
+        </div>
         <div
           className={this.state.lodintable ? "seeloading" : "seelodingdnone"}
         >

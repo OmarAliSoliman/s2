@@ -17,6 +17,7 @@ import { MDBBtn } from "mdbreact";
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import ModalAddHandymanToOrder from "./ModalAddHandymanToOrder";
 import FilterDate from "./FilterDate";
+import Select from "react-select";
 
 class FixesNotSet extends Component {
   state = {
@@ -37,11 +38,12 @@ class FixesNotSet extends Component {
 
   componentDidMount() {
     const date = this.state.datevalue;
+    this.setState({
+      lodintable: true,
+    })
     axios
       .get(
-        `http://sal7lly-001-site1.ctempurl.com/api/Orders/GetAllOrdersByStep?OrderSteps=8938780e-4080-4a45-4fa5-08d99d6e3e93${
-          date == "" ? "" : `&date=${date}`
-        }`
+        `http://sal7lly-001-site1.ctempurl.com/api/Orders/GetAllOrdersByStep?OrderSteps=8938780e-4080-4a45-4fa5-08d99d6e3e93${date == "" ? "" : `&date=${date}`}`
       )
       .then((res) => {
         // console.log(res);
@@ -113,13 +115,27 @@ class FixesNotSet extends Component {
             dat.city = dat.city.name;
           }
 
-          var datem = dat.datePrefered.split("T")[0];
+          var datem = dat.dateCreated.split("T")[0];
           dat.dateC = datem;
 
-          var timep = dat.datePrefered.split("T")[1];
-          var time = timep
+          var timep = dat.dateCreated.split("T")[1];
+          var splittedString = timep.split(":");
+          timep = splittedString.slice(0, -1).join(':');
+          timep = timep.toString().match(/^([01]\d|2[0-3])(:)([0-5]\d)(:[0-5]\d)?$/) || [timep];
+
+          if (timep.length > 1) { // If time format correct
+            timep = timep.slice(1);  // Remove full string match value
+            // timep[5] = +timep[0] < 12 ? 'AM' : 'PM'; // Set AM/PM
+            timep[0] = +timep[0] % 12 || 12; // Adjust hours
+          }
+          timep.join('');
+          dat.timeT = timep;
+
+
+          var timepr = dat.datePrefered.split("T")[1];
+          var time = timepr
             .toString()
-            .match(/^([01]\d|2[0-3])(:)([0-5]\d)(:[0-5]\d)?$/) || [timep];
+            .match(/^([01]\d|2[0-3])(:)([0-5]\d)(:[0-5]\d)?$/) || [timepr];
           if (time.length > 1) {
             // If time format correct
             time = time.slice(1); // Remove full string match value
@@ -127,10 +143,13 @@ class FixesNotSet extends Component {
             time[0] = +time[0] % 12 || 12; // Adjust hours
           }
           time.join("");
-          dat.timeT = time;
+          dat.timepre = time;
+
+
         });
-        // var uniq = [...new Set(nallDates)];
-        // uniq.sort();
+
+
+
         this.setState({
           data: newData,
           // allDates: uniq,
@@ -145,14 +164,15 @@ class FixesNotSet extends Component {
         var newData = res.data.data;
         var newallDates = [];
         newData.map((dat, index) => {
-          var datem = dat.datePrefered.split("T")[0];
+          var datem = dat.dateCreated.split("T")[0];
           dat.dateC = datem;
           newallDates.push(datem);
-          var uniq = [...new Set(newallDates)];
-          uniq.sort();
-          this.setState({
-            allDates: uniq,
-          });
+        });
+        var uniq = [...new Set(newallDates)];
+        uniq.sort();
+        uniq.unshift("all")
+        this.setState({
+          allDates: uniq,
         });
       });
   }
@@ -169,28 +189,40 @@ class FixesNotSet extends Component {
       if (month.length < 2) month = "0" + month;
       if (day.length < 2) day = "0" + day;
 
-      return [year, day, month].join("-");
+      return [month, day, year].join("-");
     }
 
-    const fiterDate = (e) => {
-      var date = e.target.value;
-      date = formatDate(date);
-      var ne = "";
-      if (e.target.value == "all") {
-        ne = "";
-        this.setState({
-          datevalue: ne,
-        });
+    const fiterDate = (value, action) => {
+      var date = value.value;
+      var newd = "";
+      if (date == "all") {
+        newd = "";
+      } else {
+        date = formatDate(date);
+        newd = date;
       }
       this.setState(
         {
-          datevalue:date,
+          datevalue: newd,
         },
         () => {
           console.log(this.state.datevalue, "sds");
+          this.componentDidMount();
         }
       );
       // window.location.reload();
+    };
+
+    const options = this.state.allDates.map((item) => ({
+      value: item,
+      label: item,
+    }));
+
+    const onSelectChange = (value, action) => {
+      console.log(action.name, value.value)
+      this.setState({
+        [action.name]:value.value
+      })
     };
 
     const datatable = {
@@ -206,7 +238,8 @@ class FixesNotSet extends Component {
         { label: "الحاله", field: "orderstep" },
         { label: "رقم هاتف العميل", field: "clientMop" },
         { label: "تاريخ الطلب", field: "dateC" },
-        { label: "وقت تنفيذ الطلب", field: "timeT" },
+        { label: "وقت الطلب", field: "timeT" },
+        { label: "وقت تنفيذ الطلب", field: "timepre" },
         { label: "الاختيارات", field: "option" },
       ],
       rows: this.state.data,
@@ -217,28 +250,20 @@ class FixesNotSet extends Component {
         show: false,
       });
     };
+
     return (
       <div>
         <h5 class="mb-3 text-center font-weight-bold h4">لم يتم التعيين</h5>
         <div className="filter">
           <label htmlFor="date-filter">فلتر على حسب التاريخ</label>
-          <select
-            name=""
-            id="date-filter"
+          <Select
+            id="state-select"
+            options={options}
+            clearable={true}
+            // name="handymanId"
+            placeholder={"اختر التاريخ"}
             onChange={fiterDate}
-            className="dateFilter form-control"
-            id=""
-          >
-            <option value="" selected disabled>
-              اختر التاريخ
-            </option>
-            <option value="all">الكل</option>
-            {allDates.map((item, index) => (
-              <option value={item} key={index}>
-                {item}
-              </option>
-            ))}
-          </select>
+          />
         </div>
         <div
           className={this.state.lodintable ? "seeloading" : "seelodingdnone"}
@@ -255,7 +280,7 @@ class FixesNotSet extends Component {
           handleShow={this.handleShow}
           handleClose={handleClose}
           rowdata={this.state.rowdata}
-          // handelChange={handelChange}
+        // handelChange={handelChange}
         />
       </div>
     );
